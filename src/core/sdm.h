@@ -8,6 +8,7 @@ class SDM{
     std::array<T, A> integrater;
 
     int operator () (T input);
+    void glitch(int step);
 
   private:
     std::array<T, A> _coefs;
@@ -28,4 +29,12 @@ int SDM<T, A>::operator () (T input){
         input = integral += input;
     }
     return step;
+}
+
+template <typename T, std::size_t A>
+void SDM<T, A>::glitch(int step){
+    auto coefItr = _coefs.cbegin();
+    for(T& integral: integrater){
+        integral += *(coefItr++) * step;
+    }
 }
