@@ -1,5 +1,5 @@
 /*
-* Oversampling with FIR filter in liquid
+* Sample continuous function to generate discrete signal
 *
 * Copyright (c) 2021 SdtElectronics . All rights reserved.
 * 
@@ -32,39 +32,15 @@
 
 #pragma once
 
+#include <cstdint>
 #include <array>
 
-#include <liquid/liquid.h>
-
-template<std::size_t L>
-class finterp{
-  public:
-    finterp(const std::array<float, L>& coefs);
-    inline void operator () (float val, float* out);
-    void reset();
-
-    ~finterp();
-
-  private:
-    std::array<float, L> _coefs;
-    firinterp_crcf firinterp;
-
-};
-
-template<std::size_t L>
-finterp<L>::finterp(const std::array<float, L>& coefs): _coefs(coefs),
-                                                    firinterp(_coefs.data()){
-}
-
-/*
-template<std::size_t L>
-void finterp<L>::operator () (float val, float* complex out){
-    float complex x = val;
-    firinterp_crcf_execute(firinterp, x, out);
-}
-*/
-
-template<std::size_t L>
-finterp<L>::~finterp(){
-    firinterp_crcf_destroy(firinterp);
+template <typename F, std::size_t L>
+void sampler(F func, double lowerlim, double uperlim, std::array<double, L>& samps){
+    const double delta = (uperlim - lowerlim)/(L - 1.);
+    double ix = lowerlim;
+    for(std::size_t i = 0; i != L; ++i){
+        samps[i] = func(lowerlim);
+        lowerlim += delta;
+    }
 }

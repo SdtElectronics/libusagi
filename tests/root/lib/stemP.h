@@ -1,5 +1,5 @@
 /*
-* Oversampling with FIR filter in liquid
+* Plot stem graph
 *
 * Copyright (c) 2021 SdtElectronics . All rights reserved.
 * 
@@ -30,41 +30,54 @@
 * POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
-
+#include <cstdint>
 #include <array>
+#include <memory>
 
-#include <liquid/liquid.h>
-
-template<std::size_t L>
-class finterp{
-  public:
-    finterp(const std::array<float, L>& coefs);
-    inline void operator () (float val, float* out);
-    void reset();
-
-    ~finterp();
-
-  private:
-    std::array<float, L> _coefs;
-    firinterp_crcf firinterp;
-
-};
-
-template<std::size_t L>
-finterp<L>::finterp(const std::array<float, L>& coefs): _coefs(coefs),
-                                                    firinterp(_coefs.data()){
+template <typename T, std::size_t L>
+auto stemP(const std::array<T, L>& arr, double ll, double ul, const char* name = "", const char* opt = "aps"){
+	//auto len = static_cast<std::size_t>(++ul - ll);
+	double ax[L], ayh[L], ayl[L], ay[L], axz[L];
+    /*
+	for(double ix = ll; ix != ul; ++ix){
+		int ind = ix -ll;
+		axz[ind] = 0;
+		ax[ind] = ix;
+		double iy = arr[ind];
+		ix = ax[ind];
+		if(iy < 0){
+			ayh[ind] = -iy;
+			ayl[ind] = 0;
+		}else{
+			ayh[ind] = 0;
+			ayl[ind] = iy;
+		}
+		ay[ind] = iy;
+	}
+    */
+    for(std::size_t ix = 0; ix != L; ++ix){
+		int ind = ix;
+		axz[ind] = 0;
+		ax[ind] = ix;
+		double iy = arr[ind];
+		if(iy < 0){
+			ayh[ind] = -iy;
+			ayl[ind] = 0;
+		}else{
+			ayh[ind] = 0;
+			ayl[ind] = iy;
+		}
+		ay[ind] = iy;
+	}
+	auto ret = std::shared_ptr<TGraphAsymmErrors>(new TGraphAsymmErrors(L, ax, ay, axz, axz, ayl, ayh));
+	ret->SetLineColor(4);
+	ret->SetMarkerColor(4);
+	ret->SetTitle(name);
+	ret->SetMarkerStyle(4);
+	return ret;
 }
 
-/*
-template<std::size_t L>
-void finterp<L>::operator () (float val, float* complex out){
-    float complex x = val;
-    firinterp_crcf_execute(firinterp, x, out);
-}
-*/
-
-template<std::size_t L>
-finterp<L>::~finterp(){
-    firinterp_crcf_destroy(firinterp);
+auto DrawP(const std::shared_ptr<TGraphAsymmErrors> objPtr, const char* opt = "aps"){
+	objPtr->Draw(opt);
+	return new shared_ptr<TGraphAsymmErrors>(objPtr);
 }
