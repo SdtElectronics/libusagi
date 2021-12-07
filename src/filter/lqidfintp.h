@@ -32,39 +32,81 @@
 
 #pragma once
 
-#include <array>
+#include <complex>
+#include <vector>
 
 #include <liquid/liquid.h>
 
-template<std::size_t L>
+template<typename T>
 class finterp{
   public:
-    finterp(const std::array<float, L>& coefs);
-    inline void operator () (float val, float* out);
+    finterp(firinterp_crcf firinterp);
+    finterp(std::size_t OSR, T* coefs, std::size_t length);
+    
+    // Interface
+    inline void operator () (T val, T* out);
+    inline std::size_t getOSR();
+    inline std::size_t getDelay();
     void reset();
 
     ~finterp();
 
-  private:
-    std::array<float, L> _coefs;
-    firinterp_crcf firinterp;
+    // Factory methods
+    static finterp createKaiserWin(std::size_t OSR, std::size_t m, float As);
 
+  private:
+    const std::size_t _OSR;
+    const std::size_t _delay;
+    firinterp_crcf _firinterp;
+
+    // Reserve buffer to avoid allocation each time
+    std::vector<std::complex<float>> _buf;
 };
 
-template<std::size_t L>
-finterp<L>::finterp(const std::array<float, L>& coefs): _coefs(coefs),
-                                                    firinterp(_coefs.data()){
+template<typename T>
+finterp<T>::finterp(firinterp_crcf firinterp):
+    _firinterp(firinterp),
+    _OSR(firinterp_crcf_get_interp_rate(firinterp)),
+    _delay(firinterp_crcf_get_sub_len(firinterp)/2){
+    _buf.resize(_OSR);
 }
 
-/*
-template<std::size_t L>
-void finterp<L>::operator () (float val, float* complex out){
-    float complex x = val;
-    firinterp_crcf_execute(firinterp, x, out);
+template<typename T>
+finterp<T>::finterp(std::size_t OSR, T* coefs, std::size_t length):
+    finterp(firinterp_crcf_create(OSR, coefs, length)){
 }
-*/
 
-template<std::size_t L>
-finterp<L>::~finterp(){
-    firinterp_crcf_destroy(firinterp);
+template<typename T>
+finterp<T> finterp<T>::createKaiserWin(std::size_t OSR, std::size_t m, float As){
+    return finterp(firinterp_crcf_create_kaiser(OSR, m, As));
+}
+
+template<typename T>
+void finterp<T>::operator () (T val, T* out){
+    std::complex<float> x {static_cast<float>(val), 0};
+    firinterp_crcf_execute(_firinterp, x, _buf.data());
+    for(std::size_t i = 0; i != _OSR; ++i){
+        out[i] = static_cast<T>(_buf[i].real());
+    }
+}
+
+template<typename T>
+std::size_t finterp<T>::getOSR(){
+    return _OSR;
+}
+
+template<typename T>
+std::size_t finterp<T>::getDelay(){
+    return _delay;
+}
+
+template<typename T>
+void finterp<T>::reset(){
+    firinterp_crcf_reset(_firinterp);
+}
+
+
+template<typename T>
+finterp<T>::~finterp(){
+    firinterp_crcf_destroy(_firinterp);
 }

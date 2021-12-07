@@ -34,25 +34,44 @@
 
 #include <cstddef>
 
-template<typename T, std::size_t L>
+template<typename T>
 class hold{
   public:
-    void operator () (T val, T* out);
-    void reset();
+    hold(std::size_t OSR);
+    // Interface
+    inline void operator () (T val, T* out);
+    inline std::size_t getOSR();
+    inline std::size_t getDelay();
+    inline void reset();
 
-    static constexpr std::size_t length = L;
+  private:
+    const std::size_t _OSR;
+    static constexpr std::size_t _delay = 0;
 };
 
+template<typename T>
+hold<T>::hold(std::size_t OSR): _OSR(OSR){
+}
 
-template<typename T, std::size_t L>
-void hold<T, L>::operator () (T val, T* out){
-    for(std::size_t i = 0; i != L; ++i){
+template<typename T>
+void hold<T>::operator () (T val, T* out){
+    for(std::size_t i = 0; i != _OSR; ++i){
         out[i] = val;
     }
 }
 
-template<typename T, std::size_t L>
-void hold<T, L>::reset(){
+template<typename T>
+std::size_t hold<T>::getOSR(){
+    return _OSR;
+}
+
+template<typename T>
+std::size_t hold<T>::getDelay(){
+    return _delay;
+}
+
+template<typename T>
+void hold<T>::reset(){
     // Sample & Hold Oversampler has no internal state
     // thus this is a dummy implementation
 }

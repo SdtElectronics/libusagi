@@ -1,13 +1,13 @@
 
-#include "../scaffold.h"
-#include "lib/stemP.h"
+#include "../../scaffold.h"
+#include "../lib/stemP.h"
 
-constexpr std::size_t points = 32;
-constexpr std::size_t OSR = 8;
-constexpr double llimit = .0;
-constexpr double ulimit = 3.14 * 4;
+constexpr std::size_t points = 16;
+constexpr std::size_t OSR = 16;
+constexpr std::size_t llimit = 0;
+constexpr double ulimit = 3.14 * 2;
 
-hold<double, OSR> holdF;
+hold<double> holdF(OSR);
 auto& filter = holdF;
 
 std::array<double, points> samples;
@@ -17,7 +17,7 @@ std::array<int, points*OSR> demodulated;
 
 void test(double coef){
     sampler<double(double), points>(sin, llimit, ulimit, samples);
-    DrawP(stemP(samples, llimit, ulimit));
+    DrawP(stemP(samples, llimit));
 
     new TCanvas();
 
@@ -26,21 +26,19 @@ void test(double coef){
         filter(samples[i], &(oSamples[i * OSR]));
     }
 
-    DrawP(stemP(oSamples, llimit, ulimit));
+    DrawP(stemP(oSamples, llimit));
 
 
     new TCanvas();
 
     filter.reset();
 
-    std::array<double, 2> coefs {coef, coef};
+    std::array<double, 1> coefs {coef};
 
-    SDDA<double, decltype(filter), 2> modulator(filter, coefs);
-    for(size_t i = 0; i != points; ++i){
-        modulator(samples[i], &(modulated[i * OSR]));
-    }
+    SDDA<double, decltype(filter), 1> modulator(filter, coefs);
+    modulator(samples.begin(), samples.end(), modulated.data());
 
-    DrawP(stemP(modulated, llimit, ulimit));
+    DrawP(stemP(modulated, llimit));
 
     new TCanvas();
 
@@ -49,5 +47,5 @@ void test(double coef){
         demodulated[i] = integral += (modulated[i] ? 1 : -1);
     }
 
-    DrawP(stemP(demodulated, llimit, ulimit));
+    DrawP(stemP(demodulated, llimit));
 }

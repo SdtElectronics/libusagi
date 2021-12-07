@@ -3,13 +3,19 @@ Interpolation filters are used to generate smooth oversampled signals. Instances
 
 ## Formal Interface
 ```C++
-template<std::size_t L>
-class filter_name{
+template<typename T>
+class filterName{
   public:
-    void operator () (int val, float* out);
+    void operator () (T val, T* out);
+    std::size_t getOSR();
+    std::size_t getDelay();
     void reset();
-
-    static constexpr std::size_t length = L;
 };
 ```
-A filter class should be a template class with numeric parameter `L` setting the oversampling rate (OSR). It should implement `operator ()` taking two parameters `val` and `out`. `val` is the current amplitude of input signal, and `out` is a pointer to an array of `float` with length `L`. A `reset` function should also be implemented to reset the internal state of the filter.
+A filter is a template class with parameter `T` setting the data type of samples to be processed.
+
+## Member Functions
+* `void operator () (T val, T* out)` processes a sample `val` and stores the interpolated values to `out`, which is a pointer to an array of `float` with length equals to OSR.
+* `std::size_t getOSR()` returns the oversampling rate set at construction
+* `std::size_t getDelay()` returns the delay of the filter in regard to input symbol
+* `void reset()` resets the internal state of the filter

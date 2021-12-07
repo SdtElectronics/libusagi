@@ -79,3 +79,5 @@ void SDM<T, A>::glitch(int step){
         integral += *(coefItr++) * step;
     }
 }
+
+// TODO: Partial specialization for first order modulator

@@ -35,7 +35,7 @@
 #include <memory>
 
 template <typename T, std::size_t L>
-auto stemP(const std::array<T, L>& arr, double ll, double ul, const char* name = "", const char* opt = "aps"){
+auto stemP(const std::array<T, L>& arr, int ll, const char* name = "", const char* opt = "aps"){
 	//auto len = static_cast<std::size_t>(++ul - ll);
 	double ax[L], ayh[L], ayl[L], ay[L], axz[L];
     /*
@@ -55,10 +55,9 @@ auto stemP(const std::array<T, L>& arr, double ll, double ul, const char* name =
 		ay[ind] = iy;
 	}
     */
-    for(std::size_t ix = 0; ix != L; ++ix){
-		int ind = ix;
+    for(std::size_t ind = 0; ind != L; ++ind){
 		axz[ind] = 0;
-		ax[ind] = ix;
+		ax[ind] = ind + ll;
 		double iy = arr[ind];
 		if(iy < 0){
 			ayh[ind] = -iy;
@@ -70,6 +69,33 @@ auto stemP(const std::array<T, L>& arr, double ll, double ul, const char* name =
 		ay[ind] = iy;
 	}
 	auto ret = std::shared_ptr<TGraphAsymmErrors>(new TGraphAsymmErrors(L, ax, ay, axz, axz, ayl, ayh));
+	ret->SetLineColor(4);
+	ret->SetMarkerColor(4);
+	ret->SetTitle(name);
+	ret->SetMarkerStyle(4);
+	return ret;
+}
+
+template <typename T>
+auto stemP(T begin, T end, int ll, const char* name = "", const char* opt = "aps"){
+    std::size_t length = end - begin;
+	double ax[length], ayh[length], ayl[length], ay[length], axz[length];
+
+    for(std::size_t ind = 0; ind != length; ++ind){
+		axz[ind] = 0;
+		ax[ind] = ll++;
+		double iy = begin[ind];
+		if(iy < 0){
+			ayh[ind] = -iy;
+			ayl[ind] = 0;
+		}else{
+			ayh[ind] = 0;
+			ayl[ind] = iy;
+		}
+		ay[ind] = iy;
+	}
+	auto ret = std::shared_ptr<TGraphAsymmErrors>(
+        new TGraphAsymmErrors(length, ax, ay, axz, axz, ayl, ayh));
 	ret->SetLineColor(4);
 	ret->SetMarkerColor(4);
 	ret->SetTitle(name);
