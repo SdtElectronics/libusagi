@@ -34,49 +34,60 @@
 
 #include <array>
 #include <cstdint>
+#include <exception>
 
 // T: Arithmetic type representing the modulated signal
-// A: Order of the modulator
-template <typename T, std::size_t A>
+// A: Maximum order of the modulator
+template <typename T, std::size_t A = 16>
 class SDM{
   public:
     // coefs: Array of gains at each stage
-    SDM(const std::array<T, A>& coefs);
-    std::array<T, A> integrator;
+    SDM(T* begin, T* end);
 
     // input: Oversampled data to be modulated
     uint8_t operator () (T input);
 
     // step: 
-    void glitch(int step);
+    void glitch(bool ov);
 
   private:
-    std::array<T, A> _coefs;
+    T* _begin;
+    T* _end;
+    std::array<T, A> _integrator;
 };
 
 template <typename T, std::size_t A>
-SDM<T, A>::SDM(const std::array<T, A>& coefs): _coefs(coefs),
-                                               integrator(){
+SDM<T, A>::SDM(T* begin, T* end): 
+    _begin(begin),
+    _end(end),
+    _integrator(){
+    if((end - begin) > A){
+        throw std::length_error(
+            "Designated modulation order is higher than maximum order supported");
+    }
 }
 
 template <typename T, std::size_t A>
 uint8_t SDM<T, A>::operator () (T input){
-    auto coefItr = _coefs.cbegin();
-    bool ov = integrator.back() > 0;
-    for(T& integral: integrator){
-        T step = *(coefItr++);
+    auto integratorItr = _integrator.begin();
+    bool ov = _integrator.back() > 0;
+    for(T* coefPtr = _begin; coefPtr!= _end; ++coefPtr){
+        T step = *coefPtr;
         step = ov ? step : -step;
         input -= step;
-        input = integral += input;
+        input = *(integratorItr++) += input;
     }
     return static_cast<uint8_t>(ov);
 }
 
 template <typename T, std::size_t A>
-void SDM<T, A>::glitch(int step){
-    auto coefItr = _coefs.cbegin();
-    for(T& integral: integrator){
-        integral += *(coefItr++) * step;
+void SDM<T, A>::glitch(bool ov){
+    auto integratorItr = _integrator.begin();
+
+    for(T* coefPtr = _begin; coefPtr!= _end; ++coefPtr){
+        T step = *coefPtr;
+        step = ov ? step : -step;
+        *(integratorItr++) -= step;
     }
 }
 

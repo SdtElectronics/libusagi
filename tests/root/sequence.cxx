@@ -51,7 +51,9 @@ void test(double coef){
 
     std::array<double, 1> coefs {coef};
 
-    SDDA<double, decltype(filter), 1> modulator(filter, coefs);
+    SDDC<double, decltype(filter), 1> modulator(filter, 
+        &(*(coefs.begin())),
+        &(*(coefs.end())));
     modulator(samples.begin(), samples.end(), modulated.data());
 
     DrawP(stemP(modulated, llimit));

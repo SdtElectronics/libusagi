@@ -45,8 +45,8 @@ class finterp{
     
     // Interface
     inline void operator () (T val, T* out);
-    inline std::size_t getOSR();
-    inline std::size_t getDelay();
+    inline std::size_t getOSR() const;
+    inline std::size_t getDelay() const;
     void reset();
 
     ~finterp();
@@ -91,12 +91,12 @@ void finterp<T>::operator () (T val, T* out){
 }
 
 template<typename T>
-std::size_t finterp<T>::getOSR(){
+std::size_t finterp<T>::getOSR() const{
     return _OSR;
 }
 
 template<typename T>
-std::size_t finterp<T>::getDelay(){
+std::size_t finterp<T>::getDelay() const{
     return _delay;
 }
 
