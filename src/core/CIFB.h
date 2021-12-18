@@ -1,5 +1,5 @@
 /*
-* Sigma-delta Modulator Core
+* Modulator with CIFB (Cascade of Integrators with Distributed) Filter
 *
 * Copyright (c) 2021 SdtElectronics . All rights reserved.
 * 
@@ -39,10 +39,10 @@
 // T: Arithmetic type representing the modulated signal
 // A: Maximum order of the modulator
 template <typename T, std::size_t A = 16>
-class SDM{
+class CIFB{
   public:
-    // coefs: Array of gains at each stage
-    SDM(T* begin, T* end);
+    // coefs: Array of gains at each stage, from last to begin
+    CIFB(const T* const begin, const T* const end);
 
     // input: Oversampled data to be modulated
     uint8_t operator () (T input);
@@ -51,15 +51,15 @@ class SDM{
     void glitch(bool ov);
 
   private:
-    T* _begin;
-    T* _end;
+    const T* const _begin;
+    const T* const _end;
     std::array<T, A> _integrator;
 };
 
 template <typename T, std::size_t A>
-SDM<T, A>::SDM(T* begin, T* end): 
+CIFB<T, A>::CIFB(const T* const begin, const T* const end): 
     _begin(begin),
-    _end(end),
+    _end(end - 1),
     _integrator(){
     if((end - begin) > A){
         throw std::length_error(
@@ -68,23 +68,31 @@ SDM<T, A>::SDM(T* begin, T* end):
 }
 
 template <typename T, std::size_t A>
-uint8_t SDM<T, A>::operator () (T input){
-    auto integratorItr = _integrator.begin();
+uint8_t CIFB<T, A>::operator () (T input){
+    auto integratorItr = _integrator.end() - 1;
     bool ov = _integrator.back() > 0;
-    for(T* coefPtr = _begin; coefPtr!= _end; ++coefPtr){
+    const T* coefPtr = _begin;
+    for(; coefPtr!= _end; ++coefPtr){
         T step = *coefPtr;
         step = ov ? step : -step;
-        input -= step;
-        input = *(integratorItr++) += input;
+        T& tmp = *integratorItr;
+        tmp += *(--integratorItr);
+        tmp -= step;
     }
+
+    T step = *coefPtr;
+    step = ov ? step : -step;
+    (*integratorItr) += input;
+    (*integratorItr) -= step;
+
     return static_cast<uint8_t>(ov);
 }
 
 template <typename T, std::size_t A>
-void SDM<T, A>::glitch(bool ov){
+void CIFB<T, A>::glitch(bool ov){
     auto integratorItr = _integrator.begin();
 
-    for(T* coefPtr = _begin; coefPtr!= _end; ++coefPtr){
+    for(const T* coefPtr = _begin; coefPtr!= _end; ++coefPtr){
         T step = *coefPtr;
         step = ov ? step : -step;
         *(integratorItr++) -= step;

@@ -47,14 +47,13 @@ void test(double coef){
 
     std::array<double, 1> coefs {coef};
 
-    SDDC<double, decltype(filter), 1> modulator(filter, 
-        &(*(coefs.begin())),
-        &(*(coefs.end())));
-    modulated.resize((points + delay)*OSR);
+    CIFB<double, 1> modulator(&(*(coefs.begin())), &(*(coefs.end())));
 
-    auto tail = modulator.convertStream(samples.begin(), samples.end() - 6, modulated.data());
-    tail = modulator.convertStream(samples.end() - 6, samples.end(), tail);
-    modulator.getTailStream(tail);
+    SDDC<double, decltype(modulator), decltype(filter)> converter(modulator, filter);
+
+    auto tail = converter.convertStream(samples.begin(), samples.end() - 6, modulated.data());
+    tail = converter.convertStream(samples.end() - 6, samples.end(), tail);
+    converter.getTailStream(tail);
 
     DrawP(stemP(modulated.begin() + delay*OSR, modulated.end(), llimit));
 

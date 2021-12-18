@@ -51,10 +51,11 @@ void test(double coef){
 
     std::array<double, 1> coefs {coef};
 
-    SDDC<double, decltype(filter), 1> modulator(filter, 
-        &(*(coefs.begin())),
-        &(*(coefs.end())));
-    modulator(samples.begin(), samples.end(), modulated.data());
+    CIFB<double> modulator(&(*(coefs.begin())), &(*(coefs.end())));
+
+    SDDC<double, decltype(modulator), decltype(filter)> converter(modulator, 
+        filter);
+    converter(samples.begin(), samples.end(), modulated.data());
 
     DrawP(stemP(modulated, llimit));
 

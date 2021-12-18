@@ -6,16 +6,17 @@
 #include <type_traits>
 #include <vector>
 
-#include "core/sdm.h"
+#include "core/CIFB.h"
+#include "core/NIF.h"
 
 // T: Arithmetic type representing the modulated signal
 // Longer type gives better precision
-// F: Interpolation filter object
+// F: Interpolation filter type
 // A: Maximum order of the modulator
-template<typename T, typename F, std::size_t A>
+template<typename T, typename M, typename F>
 class SDDC{
   public:
-    SDDC(F& filter, T* begin, T* end);
+    SDDC(M& modulator, F& filter);
 
     // Convert and write to an integer array
     inline void operator () (T input, uint8_t* out);
@@ -31,33 +32,33 @@ class SDDC{
     inline  uint8_t* convertStream(T* begin, T* end, uint8_t* out, std::size_t DSR);
 
   private:
+    M& _modulator;
     F& _filter;
-    SDM<T, A> _modulator;
     // Reserve buffer to avoid allocation each time
     std::vector<double> _overSampBuf;
 
     const std::size_t _OSR;
 };
 
-template<typename T, typename F, std::size_t A>
-SDDC<T, F, A>::SDDC(F& filter, T* begin, T* end):
+template<typename T, typename M, typename F>
+SDDC<T, M, F>::SDDC(M& modulator, F& filter):
+    _modulator(modulator),
     _filter(filter),
-    _modulator(begin, end),
     _OSR(filter.getOSR()){
     _overSampBuf.resize(_OSR);
 }
 
 
-template<typename T, typename F, std::size_t A>
-void SDDC<T, F, A>::operator () (T input, uint8_t* out){
+template<typename T, typename M, typename F>
+void SDDC<T, M, F>::operator () (T input, uint8_t* out){
     _filter(input, _overSampBuf.data());
     for(std::size_t i = 0; i != _OSR; ++i){
         out[i] = _modulator(_overSampBuf[i]);
     }
 }
 
-template<typename T, typename F, std::size_t A>
-void SDDC<T, F, A>::operator () (T* begin, T* end, uint8_t* out){
+template<typename T, typename M, typename F>
+void SDDC<T, M, F>::operator () (T* begin, T* end, uint8_t* out){
     std::size_t delay = _filter.getDelay();
     T* start = std::min(end, begin + delay);
 
@@ -69,8 +70,8 @@ void SDDC<T, F, A>::operator () (T* begin, T* end, uint8_t* out){
     getTailStream(out);
 }
 
-template<typename T, typename F, std::size_t A>
-uint8_t* SDDC<T, F, A>::convertStream(T* begin, T* end, uint8_t* out){
+template<typename T, typename M, typename F>
+uint8_t* SDDC<T, M, F>::convertStream(T* begin, T* end, uint8_t* out){
     for(; begin != end; ++begin){
         (*this)(*begin, out);
         out+=_OSR;
@@ -79,8 +80,8 @@ uint8_t* SDDC<T, F, A>::convertStream(T* begin, T* end, uint8_t* out){
     return out;
 }
 
-template<typename T, typename F, std::size_t A>
-uint8_t* SDDC<T, F, A>::convertStream(T* begin, T* end, uint8_t* out, std::size_t DSR){
+template<typename T, typename M, typename F>
+uint8_t* SDDC<T, M, F>::convertStream(T* begin, T* end, uint8_t* out, std::size_t DSR){
     for(; begin < end; ++begin){
         for(std::size_t i = 1; i != DSR; ++i){
             _filter(*(begin++), _overSampBuf.data());
@@ -93,8 +94,8 @@ uint8_t* SDDC<T, F, A>::convertStream(T* begin, T* end, uint8_t* out, std::size_
     return out;
 }
 
-template<typename T, typename F, std::size_t A>
-uint8_t* SDDC<T, F, A>::getTailStream(uint8_t* out){
+template<typename T, typename M, typename F>
+uint8_t* SDDC<T, M, F>::getTailStream(uint8_t* out){
     // Zero-padding the sequence to get the complete output
     for(std::size_t i = 0; i != _filter.getDelay(); ++i){
         (*this)(0, out);

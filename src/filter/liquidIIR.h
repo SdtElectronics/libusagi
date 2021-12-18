@@ -1,5 +1,5 @@
 /*
-* Oversampling with FIR filter in liquid
+* IIR filter in liquid
 *
 * Copyright (c) 2021 SdtElectronics . All rights reserved.
 * 
@@ -38,84 +38,84 @@
 #include <liquid/liquid.h>
 
 template<typename T>
-class finterp{
+class iirfilt{
   public:
-    finterp(firinterp_crcf firinterp);
-    finterp(std::size_t OSR, T* coefs, std::size_t length);
+    iirfilt(iirfilt_crcf iirfilt);
+    iirfilt(T* ffCoefs, std::size_t ffCoefNum, T* fbCoefs, std::size_t fbCoefNum);
 
-    // liquid DSP does not support copy of firinterp_crcf
+    // liquid DSP does not support copy of iirfilt_crcf
     // thus the copy constructor of this wrapper class is deleted
-    finterp(const finterp& _finterp) = delete;
+    iirfilt(const iirfilt&) = delete;
 
-    // liquid DSP does not support copy of firinterp_crcf
+    // liquid DSP does not support copy of iirfilt_crcf
     // thus the assignment operator of this wrapper class is deleted
-    finterp& operator = (const finterp& _finterp) = delete;
+    iirfilt& operator = (const iirfilt&) = delete;
     
     // Interface
-    inline void operator () (T val, T* out);
-    inline std::size_t getOSR() const;
+    inline T operator () (T val);
     inline std::size_t getDelay() const;
     void reset();
 
-    ~finterp();
+    ~iirfilt();
 
     // Factory methods
-    static finterp createKaiserWin(std::size_t OSR, std::size_t m, float As);
+    static iirfilt createChebyI(std::size_t order, float fc, float Ap);
+    static iirfilt createChebyII(std::size_t order, float fc, float As);
 
   private:
-    const std::size_t _OSR;
+    iirfilt_crcf _iirfilt;
     const std::size_t _delay;
-    firinterp_crcf _firinterp;
-
-    // Reserve buffer to avoid allocation each time
-    std::vector<std::complex<float>> _buf;
 };
 
 template<typename T>
-finterp<T>::finterp(firinterp_crcf firinterp):
-    _firinterp(firinterp),
-    _OSR(firinterp_crcf_get_interp_rate(firinterp)),
-    _delay(firinterp_crcf_get_sub_len(firinterp)/2){
-    _buf.resize(_OSR);
+iirfilt<T>::iirfilt(iirfilt_crcf iirfilt):
+    _iirfilt(iirfilt),
+    _delay(iirfilt_crcf_get_length(_iirfilt)/2){
 }
 
 template<typename T>
-finterp<T>::finterp(std::size_t OSR, T* coefs, std::size_t length):
-    finterp(firinterp_crcf_create(OSR, coefs, length)){
+iirfilt<T>::iirfilt(T* ffCoefs, std::size_t ffCoefNum, T* fbCoefs, std::size_t fbCoefNum):
+    iirfilt(iirfilt_crcf_create(ffCoefs, ffCoefNum, fbCoefs, fbCoefNum)){
 }
 
 
 template<typename T>
-finterp<T> finterp<T>::createKaiserWin(std::size_t OSR, std::size_t m, float As){
-    return finterp(firinterp_crcf_create_kaiser(OSR, m, As));
+iirfilt<T> iirfilt<T>::createChebyI(std::size_t order, float fc, float Ap){
+    return iirfilt<T>(iirfilt_crcf_create_prototype(LIQUID_IIRDES_CHEBY1, 
+                                                LIQUID_IIRDES_LOWPASS, 
+                                                LIQUID_IIRDES_SOS, 
+                                                order, fc, 0, Ap, 1));
 }
 
 template<typename T>
-void finterp<T>::operator () (T val, T* out){
+iirfilt<T> iirfilt<T>::createChebyII(std::size_t order, float fc, float As){
+    return iirfilt<T>(iirfilt_crcf_create_prototype(LIQUID_IIRDES_CHEBY2, 
+                                                LIQUID_IIRDES_LOWPASS, 
+                                                LIQUID_IIRDES_SOS, 
+                                                order, fc, 0, 1, As));
+}
+
+template<typename T>
+T iirfilt<T>::operator () (T val){
     std::complex<float> x {static_cast<float>(val), 0};
-    firinterp_crcf_execute(_firinterp, x, _buf.data());
-    for(std::size_t i = 0; i != _OSR; ++i){
-        out[i] = static_cast<T>(_buf[i].real());
-    }
+    std::complex<float> y;
+    iirfilt_crcf_execute(_iirfilt, x, &y);
+    return y.real();
 }
 
-template<typename T>
-std::size_t finterp<T>::getOSR() const{
-    return _OSR;
-}
 
 template<typename T>
-std::size_t finterp<T>::getDelay() const{
+std::size_t iirfilt<T>::getDelay() const{
     return _delay;
 }
 
 template<typename T>
-void finterp<T>::reset(){
-    firinterp_crcf_reset(_firinterp);
+void iirfilt<T>::reset(){
+    iirfilt_crcf_reset(_iirfilt);
 }
 
 
 template<typename T>
-finterp<T>::~finterp(){
-    firinterp_crcf_destroy(_firinterp);
+iirfilt<T>::~iirfilt(){
+    iirfilt_crcf_destroy(_iirfilt);
 }

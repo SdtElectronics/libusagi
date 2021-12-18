@@ -1,5 +1,5 @@
 /*
-* all filters
+* Modulator without Input Feedforward
 *
 * Copyright (c) 2021 SdtElectronics . All rights reserved.
 * 
@@ -30,6 +30,43 @@
 * POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "hold.h"
-#include "lqidfintp.h"
-#include "liquidIIR.h"
+#pragma once
+
+#include <array>
+#include <cstdint>
+#include <exception>
+
+// T: Arithmetic type representing the modulated signal
+// F: Noise-shaping filter type
+template <typename T, typename F>
+class NIF{
+  public:
+    NIF(F& filter, T deltaGain);
+
+    // input: Oversampled data to be modulated
+    uint8_t operator () (T input);
+
+    std::size_t getDelay();
+
+  private:
+    F& _filter;
+    T _deltaGain;
+    bool ov = false;
+};
+
+template <typename T, typename F>
+NIF<T, F>::NIF(F& filter, T deltaGain): _filter(filter), _deltaGain(deltaGain){
+}
+
+template <typename T, typename F>
+uint8_t NIF<T, F>::operator () (T input){
+    T step = _deltaGain;
+    step = ov ? step : -step;
+    ov = _filter(input - step) > 0;
+    return static_cast<uint8_t>(ov);
+}
+
+template <typename T, typename F>
+std::size_t NIF<T, F>::getDelay(){
+    return _filter.getDelay();
+}
