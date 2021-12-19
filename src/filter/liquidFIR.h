@@ -1,5 +1,5 @@
 /*
-* Oversampling with FIR filter in liquid
+* FIR filter in liquid
 *
 * Copyright (c) 2021 SdtElectronics . All rights reserved.
 * 
@@ -37,83 +37,73 @@
 #include <liquid/liquid.h>
 
 template<typename T>
-class finterp{
+class firfilt{
   public:
-    finterp(firinterp_rrrf firinterp);
-    finterp(std::size_t OSR, T* coefs, std::size_t length);
+    firfilt(firfilt_rrrf firfilt);
+    firfilt(T* Coefs, std::size_t CoefNum);
 
-    // liquid DSP does not support copy of firinterp_rrrf
+    // liquid DSP does not support copy of firfilt_rrrf
     // thus the copy constructor of this wrapper class is deleted
-    finterp(const finterp& _finterp) = delete;
+    firfilt(const firfilt&) = delete;
 
-    // liquid DSP does not support copy of firinterp_rrrf
+    // liquid DSP does not support copy of firfilt_rrrf
     // thus the assignment operator of this wrapper class is deleted
-    finterp& operator = (const finterp& _finterp) = delete;
+    firfilt& operator = (const firfilt&) = delete;
     
     // Interface
-    inline void operator () (T val, T* out);
-    inline std::size_t getOSR() const;
+    inline T operator () (T val);
     inline std::size_t getDelay() const;
     void reset();
 
-    ~finterp();
+    ~firfilt();
 
     // Factory methods
-    static finterp createKaiserWin(std::size_t OSR, std::size_t m, float As);
+    static firfilt createKaiserWin(std::size_t order, float fc, float As);
 
   private:
-    const std::size_t _OSR;
+    firfilt_rrrf _firfilt;
     const std::size_t _delay;
-    firinterp_rrrf _firinterp;
-
-    // Reserve buffer to avoid allocation each time
-    std::vector<float> _buf;
 };
 
 template<typename T>
-finterp<T>::finterp(firinterp_rrrf firinterp):
-    _firinterp(firinterp),
-    _OSR(firinterp_rrrf_get_interp_rate(firinterp)),
-    _delay(firinterp_rrrf_get_sub_len(firinterp)/2){
-    _buf.resize(_OSR);
+firfilt<T>::firfilt(firfilt_rrrf firfilt):
+    _firfilt(firfilt),
+    _delay(firfilt_rrrf_get_length(_firfilt)/2){
 }
 
 template<typename T>
-finterp<T>::finterp(std::size_t OSR, T* coefs, std::size_t length):
-    finterp(firinterp_rrrf_create(OSR, coefs, length)){
+firfilt<T>::firfilt(T* Coefs, std::size_t CoefNum):
+    firfilt(firfilt_rrrf_create(Coefs, CoefNum)){
 }
 
 
 template<typename T>
-finterp<T> finterp<T>::createKaiserWin(std::size_t OSR, std::size_t m, float As){
-    return finterp(firinterp_rrrf_create_kaiser(OSR, m, As));
+firfilt<T> firfilt<T>::createKaiserWin(std::size_t order, float fc, float As){
+    std::vector<float> coefs(order);
+    liquid_firdes_kaiser(order, fc, As, 0.0f, coefs.data());
+
+    return firfilt<T>(firfilt_rrrf_create(coefs.data(), order));
 }
 
 template<typename T>
-void finterp<T>::operator () (T val, T* out){
-    firinterp_rrrf_execute(_firinterp, val, _buf.data());
-    for(std::size_t i = 0; i != _OSR; ++i){
-        out[i] = static_cast<T>(_buf[i]);
-    }
+T firfilt<T>::operator () (T val){
+    float y;
+    firfilt_rrrf_push(_firfilt, val);
+    firfilt_rrrf_execute(_firfilt, &y);
+    return y;
 }
 
 template<typename T>
-std::size_t finterp<T>::getOSR() const{
-    return _OSR;
-}
-
-template<typename T>
-std::size_t finterp<T>::getDelay() const{
+std::size_t firfilt<T>::getDelay() const{
     return _delay;
 }
 
 template<typename T>
-void finterp<T>::reset(){
-    firinterp_rrrf_reset(_firinterp);
+void firfilt<T>::reset(){
+    firfilt_rrrf_reset(_firfilt);
 }
 
-
 template<typename T>
-finterp<T>::~finterp(){
-    firinterp_rrrf_destroy(_firinterp);
+firfilt<T>::~firfilt(){
+    firfilt_rrrf_destroy(_firfilt);
 }

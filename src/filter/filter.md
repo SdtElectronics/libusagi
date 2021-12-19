@@ -1,4 +1,15 @@
-# Interpolation Filters Implementation Notes
+## General Filters Implementation Notes
+General filters are used in noise-shaping.
+
+## Formal Interface
+```C++
+template<typename T>
+class filterName{
+```
+## Member Functions
+
+
+## Interpolation Filters Implementation Notes
 Interpolation filters are used to generate smooth oversampled signals. Instances are passed to `SDDA` constructor to perform interpolation. This note defines the interface of a filter class.
 
 ## Formal Interface

@@ -32,4 +32,5 @@
 
 #include "hold.h"
 #include "lqidfintp.h"
+#include "liquidFIR.h"
 #include "liquidIIR.h"

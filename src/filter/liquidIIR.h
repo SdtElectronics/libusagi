@@ -32,7 +32,6 @@
 
 #pragma once
 
-#include <complex>
 #include <vector>
 
 #include <liquid/liquid.h>
@@ -40,14 +39,14 @@
 template<typename T>
 class iirfilt{
   public:
-    iirfilt(iirfilt_crcf iirfilt);
+    iirfilt(iirfilt_rrrf iirfilt);
     iirfilt(T* ffCoefs, std::size_t ffCoefNum, T* fbCoefs, std::size_t fbCoefNum);
 
-    // liquid DSP does not support copy of iirfilt_crcf
+    // liquid DSP does not support copy of iirfilt_rrrf
     // thus the copy constructor of this wrapper class is deleted
     iirfilt(const iirfilt&) = delete;
 
-    // liquid DSP does not support copy of iirfilt_crcf
+    // liquid DSP does not support copy of iirfilt_rrrf
     // thus the assignment operator of this wrapper class is deleted
     iirfilt& operator = (const iirfilt&) = delete;
     
@@ -63,25 +62,24 @@ class iirfilt{
     static iirfilt createChebyII(std::size_t order, float fc, float As);
 
   private:
-    iirfilt_crcf _iirfilt;
+    iirfilt_rrrf _iirfilt;
     const std::size_t _delay;
 };
 
 template<typename T>
-iirfilt<T>::iirfilt(iirfilt_crcf iirfilt):
+iirfilt<T>::iirfilt(iirfilt_rrrf iirfilt):
     _iirfilt(iirfilt),
-    _delay(iirfilt_crcf_get_length(_iirfilt)/2){
+    _delay(iirfilt_rrrf_get_length(_iirfilt)/2){
 }
 
 template<typename T>
 iirfilt<T>::iirfilt(T* ffCoefs, std::size_t ffCoefNum, T* fbCoefs, std::size_t fbCoefNum):
-    iirfilt(iirfilt_crcf_create(ffCoefs, ffCoefNum, fbCoefs, fbCoefNum)){
+    iirfilt(iirfilt_rrrf_create(ffCoefs, ffCoefNum, fbCoefs, fbCoefNum)){
 }
-
 
 template<typename T>
 iirfilt<T> iirfilt<T>::createChebyI(std::size_t order, float fc, float Ap){
-    return iirfilt<T>(iirfilt_crcf_create_prototype(LIQUID_IIRDES_CHEBY1, 
+    return iirfilt<T>(iirfilt_rrrf_create_prototype(LIQUID_IIRDES_CHEBY1, 
                                                 LIQUID_IIRDES_LOWPASS, 
                                                 LIQUID_IIRDES_SOS, 
                                                 order, fc, 0, Ap, 1));
@@ -89,7 +87,7 @@ iirfilt<T> iirfilt<T>::createChebyI(std::size_t order, float fc, float Ap){
 
 template<typename T>
 iirfilt<T> iirfilt<T>::createChebyII(std::size_t order, float fc, float As){
-    return iirfilt<T>(iirfilt_crcf_create_prototype(LIQUID_IIRDES_CHEBY2, 
+    return iirfilt<T>(iirfilt_rrrf_create_prototype(LIQUID_IIRDES_CHEBY2, 
                                                 LIQUID_IIRDES_LOWPASS, 
                                                 LIQUID_IIRDES_SOS, 
                                                 order, fc, 0, 1, As));
@@ -97,12 +95,10 @@ iirfilt<T> iirfilt<T>::createChebyII(std::size_t order, float fc, float As){
 
 template<typename T>
 T iirfilt<T>::operator () (T val){
-    std::complex<float> x {static_cast<float>(val), 0};
-    std::complex<float> y;
-    iirfilt_crcf_execute(_iirfilt, x, &y);
-    return y.real();
+    float y;
+    iirfilt_rrrf_execute(_iirfilt, val, &y);
+    return y;
 }
-
 
 template<typename T>
 std::size_t iirfilt<T>::getDelay() const{
@@ -111,11 +107,10 @@ std::size_t iirfilt<T>::getDelay() const{
 
 template<typename T>
 void iirfilt<T>::reset(){
-    iirfilt_crcf_reset(_iirfilt);
+    iirfilt_rrrf_reset(_iirfilt);
 }
-
 
 template<typename T>
 iirfilt<T>::~iirfilt(){
-    iirfilt_crcf_destroy(_iirfilt);
+    iirfilt_rrrf_destroy(_iirfilt);
 }

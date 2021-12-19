@@ -1,5 +1,5 @@
 /*
-* Modulator with CIFB (Cascade of Integrators with Distributed) Filter
+* Modulator with CIFB (Cascade of Integrators with Distributed Feedback) Filter
 *
 * Copyright (c) 2021 SdtElectronics . All rights reserved.
 * 
@@ -47,6 +47,8 @@ class CIFB{
     // input: Oversampled data to be modulated
     uint8_t operator () (T input);
 
+    std::size_t getDelay();
+
     // step: 
     void glitch(bool ov);
 
@@ -86,6 +88,11 @@ uint8_t CIFB<T, A>::operator () (T input){
     (*integratorItr) -= step;
 
     return static_cast<uint8_t>(ov);
+}
+
+template <typename T, std::size_t A>
+std::size_t CIFB<T, A>::getDelay(){
+    return _end - _begin;
 }
 
 template <typename T, std::size_t A>

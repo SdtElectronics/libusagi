@@ -1,18 +1,22 @@
+#include <vector>
 
 #include "../../scaffold.h"
 #include "../lib/stemP.h"
 
-constexpr std::size_t points = 16;
-constexpr std::size_t OSR = 6;
+constexpr std::size_t points = 32;
+constexpr std::size_t OSR = 32;
 constexpr std::size_t llimit = 0;
 constexpr double ulimit = 3.14 * 2;
 
-hold<double> holdF(OSR);
-auto& filter = holdF;
+finterp<double> fir = finterp<double>::createKaiserWin(OSR, 4, 60.f);
+auto& filter = fir;
+
+const std::size_t delay = fir.getDelay();
 
 std::array<double, points> samples;
-std::array<double, points*OSR> oSamples;
+std::vector<double> oSamples;
 std::array<uint8_t, points*OSR> modulated;
+//std::array<float, points*OSR> modulated;
 std::array<int, points*OSR> demodulated;
 
 void test(double coef){
@@ -21,21 +25,29 @@ void test(double coef){
 
     new TCanvas();
 
+    oSamples.resize((points + delay)*OSR);
     double* oSampBeg = oSamples.data();
-    for(size_t i = 0; i != points; ++i){
-        filter(samples[i], &(oSamples[i * OSR]));
+    
+    for(auto it = samples.begin(); it != samples.end(); ++it){
+        filter(*it, oSampBeg);
+        oSampBeg+=OSR;
     }
 
-    DrawP(stemP(oSamples, llimit));
+    for(std::size_t i = 0; i != delay; ++i){
+        filter(0, oSampBeg);
+        oSampBeg+=OSR;
+    }
+
+    DrawP(stemP(oSamples.begin() + delay*OSR, oSamples.end(), llimit));
 
 
     new TCanvas();
 
     filter.reset();
 
-    std::array<double, 1> coefs {coef};
+    auto fir = firfilt<double>::createKaiserWin(24, 0.12, 30.);
 
-    CIFB<double> modulator(&(*(coefs.begin())), &(*(coefs.end())));
+    NIF<double, decltype(fir)> modulator(fir, 1);
 
     SDDC<double, decltype(modulator), decltype(filter)> converter(modulator, 
         filter);
